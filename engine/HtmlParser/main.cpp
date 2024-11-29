@@ -3,7 +3,7 @@
 
 int main()
 {
-    std::string html = R"(<div class="container" id="main">Hello, World!</div>)";
+    std::string html = R"(<div title="Hello &amp; Welcome">Hello, &lt;World&gt;!</div>)";
     Tokenizer tokenizer(html);
 
     auto tokens = tokenizer.tokenize();

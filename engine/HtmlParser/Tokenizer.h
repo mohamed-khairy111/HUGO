@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 enum class TokenType
 {
@@ -18,6 +19,9 @@ struct Token
     TokenType type;
     std::string data;
     std::vector<std::pair<std::string, std::string>> attributes;
+
+    Token() : type(TokenType::Text), data("") {}
+    Token(TokenType t, const std::string &d) : type(t), data(d) {}
 };
 
 class Tokenizer
@@ -46,9 +50,11 @@ private:
     std::string currentAttributeName;
     std::string currentAttributeValue;
 
+    static std::unordered_map<std::string, char> entityMap;
     void switchState(State newState);
     char consumeCharacter();
     void emitToken(std::vector<std::shared_ptr<Token>> &tokens, TokenType type, const std::string &data = "");
+    std::string decodeEntities(const std::string &input);
 };
 
 #endif

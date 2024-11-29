@@ -1,6 +1,66 @@
 #include "Tokenizer.h"
 #include <cctype>
 #include <iostream>
+#include <sstream>
+
+std::unordered_map<std::string, char> Tokenizer::entityMap = {
+    {"amp", '&'},
+    {"lt", '<'},
+    {"gt", '>'},
+    {"quot", '"'},
+    {"apos", '\''}};
+
+std::string Tokenizer::decodeEntities(const std::string &input)
+{
+    std::string result;
+    size_t i = 0;
+
+    while (i < input.size())
+    {
+        if (input[i] == '&')
+        {
+            size_t semicolonPos = input.find(';', i);
+            if (semicolonPos != std::string::npos)
+            {
+                std::string entity = input.substr(i + 1, semicolonPos - i - 1);
+
+                // Named entity
+                if (entityMap.find(entity) != entityMap.end())
+                {
+                    result += entityMap[entity];
+                }
+                // Numeric entity
+                else if (entity[0] == '#')
+                {
+                    try
+                    {
+                        char decodeChar = static_cast<char>(std::stoi(entity.substr(1)));
+                        result += decodeChar;
+                    }
+                    catch (...)
+                    {
+                        result += "&" + entity + ";"; // fallback for malformed entities
+                    }
+                }
+                else
+                {
+                    result += "&" + entity + ";"; // fallback for unknown entities
+                }
+
+                i = semicolonPos + 1;
+            }
+            else
+            {
+                result += input[i++];
+            }
+        }
+        else
+        {
+            result += input[i++];
+        }
+    }
+    return result;
+}
 
 Tokenizer::Tokenizer(const std::string &input)
     : inputBuffer(input), currentPosition(0), state(State::Data) {}
@@ -22,7 +82,7 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             {
                 if (!currentTokenData.empty())
                 {
-                    emitToken(tokens, TokenType::Text, currentTokenData);
+                    emitToken(tokens, TokenType::Text, decodeEntities(currentTokenData));
                     currentTokenData.clear();
                 }
                 switchState(State::TagOpen);
@@ -60,6 +120,7 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             }
             else if (currentChar == '>')
             {
+                auto token = std::make_shared<Token>(TokenType::StartTag, currentTokenData);
                 tokens.push_back(currentToken);
                 currentTokenData.clear();
                 switchState(State::Data);
@@ -104,11 +165,13 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             {
                 char quote = currentChar; // Track quote type
                 currentAttributeValue.clear();
+                std::string value;
                 while ((currentChar = consumeCharacter()) != quote)
                 {
-                    currentAttributeValue += currentChar;
+                    value += currentChar;
                 }
-                currentToken->attributes.emplace_back(currentAttributeName, currentAttributeValue);
+                value = decodeEntities(value);
+                currentToken->attributes.emplace_back(currentAttributeName, value);
                 currentAttributeName.clear();
                 switchState(State::AttributeName);
             }
