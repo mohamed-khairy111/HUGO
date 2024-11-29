@@ -9,6 +9,8 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
 {
     std::vector<std::shared_ptr<Token>> tokens;
 
+    auto currentToken = std::make_shared<Token>();
+
     while (currentPosition < inputBuffer.size())
     {
         char currentChar = consumeCharacter();
@@ -40,6 +42,9 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             {
                 switchState(State::TagName);
                 currentTokenData += currentChar;
+                currentToken = std::make_shared<Token>();
+                currentToken->type = TokenType::StartTag;
+                currentToken->data = currentChar;
             }
             else
             {
@@ -51,10 +56,11 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             if (isalnum(currentChar))
             {
                 currentTokenData += currentChar;
+                currentToken->data = currentTokenData;
             }
             else if (currentChar == '>')
             {
-                emitToken(tokens, TokenType::StartTag, currentTokenData);
+                tokens.push_back(currentToken);
                 currentTokenData.clear();
                 switchState(State::Data);
             }
@@ -64,11 +70,51 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             }
             else if (isspace(currentChar))
             {
-                // Ignore spaces within tag names for now
+                switchState(State::AttributeName);
             }
             else
             {
                 std::cerr << "Unexpected character in tag name: " << currentChar << std::endl;
+            }
+            break;
+
+        case State::AttributeName:
+            if (isalnum(currentChar) || currentChar == '-')
+            {
+                currentAttributeName += currentChar;
+            }
+            else if (currentChar == '=')
+            {
+                switchState(State::AttributeValue);
+            }
+            else if (isspace(currentChar))
+            {
+                // Allow spaces after attribute names
+            }
+            else if (currentChar == '>')
+            {
+                tokens.push_back(currentToken);
+                currentTokenData.clear();
+                switchState(State::Data);
+            }
+            break;
+
+        case State::AttributeValue:
+            if (currentChar == '"' || currentChar == '\'')
+            {
+                char quote = currentChar; // Track quote type
+                currentAttributeValue.clear();
+                while ((currentChar = consumeCharacter()) != quote)
+                {
+                    currentAttributeValue += currentChar;
+                }
+                currentToken->attributes.emplace_back(currentAttributeName, currentAttributeValue);
+                currentAttributeName.clear();
+                switchState(State::AttributeName);
+            }
+            else
+            {
+                std::cerr << "Expected quotes for attribute value!" << std::endl;
             }
             break;
 
@@ -92,7 +138,7 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
         case State::SelfClosingTag:
             if (currentChar == '>')
             {
-                emitToken(tokens, TokenType::StartTag, currentTokenData + "/");
+                tokens.push_back(currentToken);
                 currentTokenData.clear();
                 switchState(State::Data);
             }

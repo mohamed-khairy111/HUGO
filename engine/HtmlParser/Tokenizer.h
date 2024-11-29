@@ -43,6 +43,8 @@ private:
     };
 
     State state;
+    std::string currentAttributeName;
+    std::string currentAttributeValue;
 
     void switchState(State newState);
     char consumeCharacter();
