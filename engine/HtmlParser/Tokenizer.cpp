@@ -120,7 +120,6 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             }
             else if (currentChar == '>')
             {
-                auto token = std::make_shared<Token>(TokenType::StartTag, currentTokenData);
                 tokens.push_back(currentToken);
                 currentTokenData.clear();
                 switchState(State::Data);
@@ -165,13 +164,11 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
             {
                 char quote = currentChar; // Track quote type
                 currentAttributeValue.clear();
-                std::string value;
                 while ((currentChar = consumeCharacter()) != quote)
                 {
-                    value += currentChar;
+                    currentAttributeValue += currentChar;
                 }
-                value = decodeEntities(value);
-                currentToken->attributes.emplace_back(currentAttributeName, value);
+                currentToken->attributes.emplace_back(currentAttributeName, decodeEntities(currentAttributeValue));
                 currentAttributeName.clear();
                 switchState(State::AttributeName);
             }
@@ -201,6 +198,7 @@ std::vector<std::shared_ptr<Token>> Tokenizer::tokenize()
         case State::SelfClosingTag:
             if (currentChar == '>')
             {
+                /*emitToken(tokens, TokenType::StartTag, currentTokenData + "/");*/
                 tokens.push_back(currentToken);
                 currentTokenData.clear();
                 switchState(State::Data);
@@ -239,6 +237,4 @@ void Tokenizer::emitToken(std::vector<std::shared_ptr<Token>> &tokens, TokenType
     token->data = data;
 
     tokens.push_back(token);
-
-    std::cout << "Token emitted: Type = " << static_cast<int>(type) << ", Data = " << data << std::endl;
 }
