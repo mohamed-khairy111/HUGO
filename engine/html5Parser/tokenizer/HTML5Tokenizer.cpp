@@ -95,11 +95,30 @@ std::vector<std::shared_ptr<Token>> HTML5Tokenizer::tokenize()
             {
                 state = State::AttributeValue;
             }
+            else if (isspace(currentChar))
+            {
+                // Treat attributes without values as empty
+                if (!currentAttrName.empty())
+                {
+                    currentToken->addAttribute(currentAttrName, "");
+                    currentAttrName.clear();
+                }
+            }
             else if (currentChar == '>')
             {
+                // Finalize attribute without value
+                if (!currentAttrName.empty())
+                {
+                    currentToken->addAttribute(currentAttrName, "");
+                    currentAttrName.clear();
+                }
                 handleAttribute(currentToken, tokens);
                 emitToken(tokens, currentToken);
                 state = State::Data;
+            }
+            else
+            {
+                std::cerr << "Unexpected character in attribute name: " << currentChar << std::endl;
             }
             break;
 
@@ -114,6 +133,32 @@ std::vector<std::shared_ptr<Token>> HTML5Tokenizer::tokenize()
                 currentToken->addAttribute(currentAttrName, currentAttrValue);
                 currentAttrName.clear();
                 currentAttrValue.clear();
+                state = State::AttributeName;
+            }
+            else if (!isspace(currentChar) && currentChar != '>')
+            {
+                // Handle unquoted values
+                currentAttrValue += currentChar;
+                while ((currentChar = consumeCharacter()) != '>' && !isspace(currentChar))
+                {
+                    currentAttrValue += currentChar;
+                }
+                currentToken->addAttribute(currentAttrName, currentAttrValue);
+                currentAttrName.clear();
+                currentAttrValue.clear();
+                if (currentChar == '>')
+                {
+                    emitToken(tokens, currentToken);
+                    state = State::Data;
+                }
+                else
+                {
+                    state = State::AttributeName;
+                }
+            }
+            else
+            {
+                std::cerr << "Invalid attribute value syntax!" << std::endl;
                 state = State::AttributeName;
             }
             break;
@@ -173,10 +218,18 @@ std::vector<std::shared_ptr<Token>> HTML5Tokenizer::tokenize()
         }
     }
 
-    // Emit remaining text as a Text token
-    if (!currentData.empty() && state == State::Data)
+    if (!currentData.empty() && state != State::Data)
     {
-        emitToken(tokens, std::make_shared<TextToken>(currentData));
+        std::cerr << "Unfinished token detected: " << currentData << std::endl;
+        if (state == State::TagName)
+        {
+            emitToken(tokens, std::make_shared<TagToken>(TokenType::StartTag, currentData));
+        }
+        else if (state == State::Comment)
+        {
+            emitToken(tokens, std::make_shared<CommentToken>(currentData));
+        }
+        currentData.clear();
     }
 
     return tokens;

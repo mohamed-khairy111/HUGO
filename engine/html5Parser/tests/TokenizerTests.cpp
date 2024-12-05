@@ -4,7 +4,7 @@
 int main()
 {
     // Test HTML input
-    std::string html = R"(<!DOCTYPE html><html lang="en"><!-- This is a comment --><body class="main">Hello, world!</body>)";
+    std::string html = R"(<!DOCTYPE html><html lang=en><!-- Unclosed comment<body class=main attr>Hello, world!</body)";
 
     // Initialize tokenizer
     HTML5Tokenizer tokenizer(html);
