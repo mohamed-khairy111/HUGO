@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "HTMLToken.h"
 using namespace std;
 
 class HTMLTokenizer
@@ -9,7 +8,7 @@ class HTMLTokenizer
 
 public:
     explicit HTMLTokenizer(const string &html) {}
-    vector<Token> tokenizer();
+    void tokenize();
 
 private:
     string inputBuffer;
@@ -101,4 +100,7 @@ private:
     };
 
     State state;
+    State return_state;
+    void switchState(State newState);
+    char next_character();
 };
