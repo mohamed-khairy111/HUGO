@@ -103,4 +103,7 @@ private:
     State return_state;
     void switchState(State newState);
     char next_character();
+    char peek_character(int) const;
+    bool next_few_character_are(const string) const;
+    void consume(const string);
 };
